@@ -1,0 +1,98 @@
+import java.io.*;
+import java.util.*;
+import java.net.*;
+
+public class PhoneServer {
+    private static int port = 2014;
+    private static ServerSocket listener = null;
+    private static Socket clientSocket = null;
+
+    public static void main(String[] args) throws Exception {
+        listener = new ServerSocket(port);
+        System.out.println("Phone Server is running on port " + port);
+
+        try {
+            while (true) {
+                clientSocket = listener.accept();
+                new ClientThread(clientSocket).start();
+            }
+        } finally {
+            listener.close();
+        }
+    }
+}
+
+class ClientThread extends Thread {
+    Socket socket;
+    private DataInputStream in;
+    private DataOutputStream out;
+
+    private Map<String, String> phoneBook;
+
+    public ClientThread(Socket socket) {
+        this.socket = socket;
+        phoneBook = new HashMap<>();
+    }
+
+    public void run() {
+        handleConnection(socket);
+    }
+
+    private void handleConnection(Socket socket) {
+        try {
+            in = new DataInputStream(socket.getInputStream());
+            out = new DataOutputStream(socket.getOutputStream());
+
+            String inputLine;
+            while ((inputLine = in.readUTF()) != null) {
+                String[] command = inputLine.split(" ");
+                switch (command[0].toUpperCase()) {
+                    case "STORE":
+                        store(command[1], command[2]);
+                        break;
+                    case "GET":
+                        get(command[1]);
+                        break;
+                    case "REMOVE":
+                        remove(command[1]);
+                        break;
+                    default:
+                        out.writeUTF("400 Bad request");
+                        break;
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Client disconnected");
+        } finally {
+            try {
+                socket.close();
+                in.close();
+                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void store(String name, String phoneNumber) throws IOException {
+        phoneBook.put(name, phoneNumber);
+        out.writeUTF("100 OK");
+    }
+
+    private void get(String name) throws IOException {
+        String phoneNumber = phoneBook.get(name);
+        if (phoneNumber != null) {
+            out.writeUTF("200 " + phoneNumber);
+        } else {
+            out.writeUTF("300 Not Found");
+        }
+    }
+
+    private void remove(String name) throws IOException {
+        if (phoneBook.remove(name) != null) {
+            out.writeUTF("100 OK");
+        } else {
+            out.writeUTF("300 Not Found");
+        }
+    }
+}
