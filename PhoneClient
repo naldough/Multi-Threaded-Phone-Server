@@ -1,0 +1,23 @@
+import java.io.*;
+import java.net.*;
+
+public class PhoneClient {
+    public static void main(String[] args) throws IOException {
+        String serverAddress = "127.0.0.1";
+        int serverPort = 2014;
+
+        try (Socket socket = new Socket(serverAddress, serverPort);
+             DataInputStream in = new DataInputStream(socket.getInputStream());
+             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+             BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in))) {
+            String userInput;
+
+            System.out.println("Connected to Phone Server");
+            while ((userInput = stdIn.readLine()) != null) {
+                out.writeUTF(userInput);
+                String response = in.readUTF();
+                System.out.println("Server response: " + response);
+            }
+        }
+    }
+}
